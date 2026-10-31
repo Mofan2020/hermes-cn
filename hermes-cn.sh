@@ -47,7 +47,7 @@ fi
 # shellcheck source=lib/doctor.sh
 . "$CN_SELF_DIR/lib/doctor.sh"
 
-CN_VERSION="1.0.1"
+CN_VERSION="1.0.2"
 
 cn_usage() {
   cat <<'EOF'

@@ -50,7 +50,7 @@ try {
 } catch {
 }
 
-$Script:Version       = '1.0.1'
+$Script:Version       = '1.0.2'
 $Script:OfficialOrigin = 'https://github.com/NousResearch/hermes-agent.git'
 $Script:BackupSuffix  = '.hermes-cn.bak'
 $Script:ProbeTimeout  = 25
