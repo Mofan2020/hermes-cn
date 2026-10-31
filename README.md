@@ -28,15 +28,19 @@ git clone https://github.com/Mofan2020/hermes-cn.git
 cd hermes-cn
 ```
 
-### 第二步：给脚本加上执行权限
+### 第二步：进入目录
 
-从压缩包里解压出来的文件没有执行权限，需要先加一次：
+解压后进入目录（压缩包里的目录名带版本号，比如 `hermes-cn-1.0.0`）：
+
+```bash
+cd hermes-cn-1.0.0
+```
+
+万一提示 Permission denied，给脚本加上执行权限就行：
 
 ```bash
 chmod +x hermes-cn.sh
 ```
-
-用 git 克隆的可以跳过这步。
 
 注意 `lib` 目录要和 `hermes-cn.sh` 放在同一个目录里，缺了它脚本跑不起来。
 
@@ -113,9 +117,9 @@ chmod +x hermes-cn.sh
 
 不行。这个脚本要配合同目录下的 `lib` 目录一起用，少一个文件都跑不起来（脚本会直接告诉你缺了哪几个）。下载整个压缩包最省事。
 
-**压缩包里的文件为什么不能直接运行？**
+**解压之后提示 Permission denied 怎么办？**
 
-从压缩包解压出来的文件没有执行权限，先 `chmod +x hermes-cn.sh` 再用。
+加上执行权限再运行：`chmod +x hermes-cn.sh`。
 
 **怎么撤销？**
 
