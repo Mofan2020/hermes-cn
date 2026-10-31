@@ -132,6 +132,9 @@ $envLines = Write-EnvLines
 Assert-True (($envLines -join "`n").Contains("`$env:UV_DEFAULT_INDEX='$TestIndex'")) '输出里带上了索引地址'
 Assert-True (($envLines -join "`n").Contains("`$env:UV_NATIVE_TLS='1'")) '输出里带上了证书设置'
 
+Assert-True (($envLines -join "`n").Contains("`$env:GIT_CONFIG_VALUE_0='https://github.com/NousResearch/hermes-agent.git'")) '输出里带上了 Git 地址改写'
+Assert-True (($envLines -join "`n").Contains("`$env:GIT_CONFIG_KEY_0='url.https://gitcode.com/GitHub_Trending/he/hermes-agent.git/.insteadOf'")) '输出里带上了 Git 镜像地址'
+
 $cmdLines = Write-EnvLines -CmdFormat
 Assert-True (($cmdLines -join "`n").Contains('set "UV_DEFAULT_INDEX=' + $TestIndex + '"')) '命令提示符格式也正确'
 

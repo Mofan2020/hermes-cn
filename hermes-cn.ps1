@@ -537,6 +537,13 @@ function Get-EnvMap {
     $map['HERMES_CN_ENABLED'] = '1'
     $map['HERMES_CN_PYPI_MIRROR'] = $Script:PypiName
     $map['HERMES_CN_GIT_MIRROR'] = $Script:GitName
+    # 给外部脚本用的 Git 地址改写。Hermes 内部的 git 不认这些环境变量，
+    # 它那部分靠仓库内的配置，详见 lib/git.sh。
+    if ($Script:GitUrl) {
+        $map['GIT_CONFIG_COUNT'] = '1'
+        $map['GIT_CONFIG_KEY_0'] = ('url.' + $Script:GitUrl + '/.insteadOf')
+        $map['GIT_CONFIG_VALUE_0'] = $Script:OfficialOrigin
+    }
     return $map
 }
 
