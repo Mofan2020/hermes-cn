@@ -315,6 +315,7 @@ cmd_apply() {
     cn_ok "仓库来源地址仍是官方 GitHub（更新通道不受影响）"
   else
     cn_warn "仓库来源地址不是官方地址：$(git -C "$hermes" config --get remote.origin.url 2>/dev/null)"
+    cn_warn "  恢复办法： git remote set-url origin ${CN_OFFICIAL_ORIGIN}"
   fi
 
   printf "\n${CN_GRN}加速配置已生效。${CN_RST}\n"

@@ -145,6 +145,15 @@ chmod +x hermes-cn.sh
 
 不需要。这个工具只处理网络通道，不涉及任何登录凭据，下载的也都是公开内容。
 
+**我手改过仓库来源地址，怎么恢复？**
+
+Hermes 是靠仓库来源地址判断这是不是官方渠道。如果地址被换成了别的（哪怕是本机路径），更新就可能被当成非官方来源而中断。恢复成官方地址：
+
+```bash
+cd ~/.hermes/hermes-agent
+git remote set-url origin https://github.com/NousResearch/hermes-agent.git
+```
+
 **为什么仓库来源还保留着官方 GitHub 地址？**
 
 因为 Hermes 会根据来源判断这是不是官方渠道。如果把来源换成镜像地址，更新就可能被当成非官方来源而中断。保留官方地址、只用镜像负责下载，两者不冲突。

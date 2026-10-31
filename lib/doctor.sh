@@ -174,6 +174,13 @@ doctor_instead_of() {
   sel=$(cn_select_git "$CN_GIT_CANDIDATES")
   [ -n "$sel" ] || return 0
   url=$(printf '%s' "$sel" | cut -d'|' -f2)
+  # 仓库来源地址不是官方 GitHub 时，这次检查说明不了问题：
+  # 拉取走的是本地路径，根本没经过镜像。
+  if ! cn_git_origin_is_official "$hermes"; then
+    doctor_warn "仓库来源地址不是官方 GitHub，这次没法验证镜像是否生效"
+    doctor_warn "  恢复办法： git remote set-url origin https://github.com/NousResearch/hermes-agent.git"
+    return 0
+  fi
   if cn_git_verify_instead_of "$hermes" "$url"; then
     doctor_ok "Git 下载镜像已生效"
   else
