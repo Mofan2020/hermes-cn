@@ -13,9 +13,10 @@
 # 退出码：0 全部通过；1 存在失败项。
 
 CN_DOCTOR_FAIL=0
+CN_DOCTOR_WARN=0
 
 doctor_ok()   { printf "  ${CN_GRN}✓${CN_RST} %s\n" "$*"; }
-doctor_warn() { printf "  ${CN_YEL}!${CN_RST} %s\n" "$*"; }
+doctor_warn() { printf "  ${CN_YEL}!${CN_RST} %s\n" "$*"; CN_DOCTOR_WARN=$((CN_DOCTOR_WARN + 1)); }
 doctor_fail() { printf "  ${CN_RED}✗${CN_RST} %s\n" "$*"; CN_DOCTOR_FAIL=1; }
 doctor_head() { printf "\n${CN_BLD}%s${CN_RST}\n" "$*"; }
 
@@ -64,26 +65,26 @@ doctor_pypi() {
     rel=$(cn_lock_sample_artifact "$hermes/uv.lock")
     if [ -n "$rel" ]; then
       if cn_probe_pypi_artifact "$pkg" "$rel"; then
-        doctor_ok "携带 Hermes 所需制品：$(basename "$rel")"
+        doctor_ok "包含 Hermes 需要的安装包：$(basename "$rel")"
         # 哈希一致性
         if cn_verify_lock_hash "$hermes/uv.lock" "$pkg" "$rel"; then
-          doctor_ok "哈希一致（镜像产物与官方逐字节相同）"
+          doctor_ok "内容与官方完全一致（逐字节相同）"
         else
-          doctor_warn "哈希校验未通过：镜像产物可能与官方不一致"
+          doctor_warn "内容与官方不一致，这个镜像可能有问题"
           CN_DOCTOR_FAIL=1
         fi
       else
-        doctor_fail "该镜像缺少 Hermes 所需的制品：$(basename "$rel")"
+        doctor_fail "该镜像缺少 Hermes 需要的安装包：$(basename "$rel")"
       fi
     fi
   else
-    doctor_warn "未找到 Hermes 安装目录，跳过制品完整性检查"
+    doctor_warn "未找到 Hermes 安装目录，跳过安装包检查"
   fi
   return 0
 }
 
 doctor_lock() {
-  doctor_head "uv.lock 改写状态"
+  doctor_head "依赖清单状态"
   local hermes
   hermes=$(doctor_find_hermes)
   if [ -z "$hermes" ]; then
@@ -96,20 +97,20 @@ doctor_lock() {
     return 0
   fi
   if cn_lock_is_rewritten "$lock"; then
-    doctor_ok "uv.lock 已改写到镜像"
+    doctor_ok "依赖清单已指向国内镜像"
     local registry
     registry=$(grep -o 'registry = "[^"]*"' "$lock" 2>/dev/null | head -1 | sed 's/registry = "//; s/"//')
-    doctor_ok "lock 内 registry：${registry}"
+    doctor_ok "依赖清单里记录的下载源：${registry}"
   else
-    doctor_warn "uv.lock 仍是官方地址（执行 hermes-cn.sh apply 可改写）"
+    doctor_warn "依赖清单还是官方地址（执行 hermes-cn.sh apply 可改写）"
   fi
 
   # uv lock --check 是否自洽
   if cn_have uv; then
     if cn_uv_lock_check "$hermes"; then
-      doctor_ok "uv lock --check 通过"
+      doctor_ok "依赖清单自检通过"
     else
-      doctor_fail "uv lock --check 失败"
+      doctor_fail "依赖清单自检不通过"
     fi
   fi
   return 0
@@ -130,18 +131,18 @@ doctor_git() {
   # Gitee 回退状态
   if [ -n "${CN_GITEE_CANDIDATE:-}" ]; then
     if cn_probe_git "${CN_GITEE_CANDIDATE}"; then
-      doctor_ok "Gitee 自建镜像可用：${CN_GITEE_CANDIDATE}"
+      doctor_ok "Gitee 镜像可用：${CN_GITEE_CANDIDATE}"
     else
-      doctor_warn "Gitee 自建镜像不可用：${CN_GITEE_CANDIDATE}"
+      doctor_warn "Gitee 镜像连不上：${CN_GITEE_CANDIDATE}"
     fi
   else
-    doctor_warn "未配置 Gitee 自建镜像（Gitee 匿名拉取不可用，需自建后设置 CN_GITEE_CANDIDATE）"
+    doctor_warn "未配置 Gitee 镜像（Gitee 上没有现成的匿名镜像，需要自己建好再设置 CN_GITEE_CANDIDATE）"
   fi
   return 0
 }
 
 doctor_origin() {
-  doctor_head "更新通道（origin 语义）"
+  doctor_head "更新通道"
   local hermes
   hermes=$(doctor_find_hermes)
   if [ -z "$hermes" ]; then
@@ -149,21 +150,21 @@ doctor_origin() {
     return 0
   fi
   if cn_git_origin_is_official "$hermes"; then
-    doctor_ok "remote.origin.url 仍是官方地址（更新通道保持官方）"
+    doctor_ok "仓库来源地址仍是官方 GitHub（更新通道不受影响）"
   else
     local origin
     origin=$(git -C "$hermes" config --get remote.origin.url 2>/dev/null)
     if [ -z "$origin" ]; then
-      doctor_warn "该目录不是 git 仓库或没有 origin"
+      doctor_warn "这个目录不是 Git 仓库，或者没有记录来源地址"
     else
-      doctor_fail "remote.origin.url 已非官方：${origin}"
+      doctor_fail "仓库来源地址已被改过：${origin}"
     fi
   fi
   return 0
 }
 
 doctor_instead_of() {
-  doctor_head "Git 传输层改写"
+  doctor_head "Git 下载镜像"
   local hermes sel url
   hermes=$(doctor_find_hermes)
   if [ -z "$hermes" ]; then
@@ -174,37 +175,37 @@ doctor_instead_of() {
   [ -n "$sel" ] || return 0
   url=$(printf '%s' "$sel" | cut -d'|' -f2)
   if cn_git_verify_instead_of "$hermes" "$url"; then
-    doctor_ok "insteadOf 在 Hermes 的 git 隔离下生效"
+    doctor_ok "Git 下载镜像已生效"
   else
-    doctor_warn "insteadOf 未生效或尚未配置（执行 hermes-cn.sh apply 可配置）"
+    doctor_warn "Git 下载镜像还没配置（执行 hermes-cn.sh apply 可配置）"
   fi
   return 0
 }
 
 doctor_raw() {
-  doctor_head "raw / release / 二进制"
+  doctor_head "文件代理 / 版本信息 / 二进制"
   local sel name prefix
   sel=$(cn_select_raw "$CN_RAW_CANDIDATES")
   if [ -n "$sel" ]; then
     name=$(printf '%s' "$sel" | cut -d'|' -f1)
-    doctor_ok "raw 代理可用：${name}"
+    doctor_ok "文件下载代理可用：${name}"
   else
-    doctor_fail "没有可用的 raw 代理"
+    doctor_fail "没有可用的文件下载代理"
   fi
 
   # GitHub 代理（lock 里 4 处 GitHub 依赖要走它）
   sel=$(cn_select_gh_release "$CN_GH_PROXY_CANDIDATES") || sel=""
   if [ -n "$sel" ]; then
     name=$(printf '%s' "$sel" | cut -d'|' -f1)
-    doctor_ok "GitHub 代理可用：${name}（release 字节与 git 协议均已校验）"
+    doctor_ok "GitHub 下载代理可用：${name}（下载内容和 git 拉取都验证过）"
   else
-    doctor_fail "没有可用的 GitHub 代理，lock 里的 GitHub 依赖会拉取失败"
+    doctor_fail "没有可用的 GitHub 下载代理，部分依赖会拉取失败"
   fi
 
   if [ "$(cn_http_code "${CN_OFFICIAL_ASSETS}/releases/stable/release-candidates.json")" = "200" ]; then
-    doctor_ok "官方 release 指针可用（hermes-assets 兜底）"
+    doctor_ok "官方版本信息可用（留作最后的备用）"
   else
-    doctor_warn "官方 release 指针不可达"
+    doctor_warn "官方版本信息连不上"
   fi
 
   if [ "$(cn_http_code "${CN_BIN_NPM_REGISTRY}/")" = "200" ]; then
@@ -215,7 +216,7 @@ doctor_raw() {
   if [ "$(cn_http_code "${CN_BIN_UV_MIRRORS_HUAWEI}/0.13.5/uv-aarch64-apple-darwin.tar.gz")" = "200" ]; then
     doctor_ok "uv 二进制镜像可用（华为云）"
   else
-    doctor_warn "uv 二进制镜像不可达（install.sh 自带 hermes-assets 兜底）"
+    doctor_warn "uv 二进制镜像连不上（install.sh 自带官方地址兜底）"
   fi
   return 0
 }
@@ -223,6 +224,7 @@ doctor_raw() {
 # cn_doctor —— 跑完整自检
 cn_doctor() {
   CN_DOCTOR_FAIL=0
+  CN_DOCTOR_WARN=0
   printf "${CN_BLD}hermes-cn 自检${CN_RST}\n"
   doctor_basic
   doctor_pypi
@@ -233,9 +235,13 @@ cn_doctor() {
   doctor_raw
   printf "\n"
   if [ "$CN_DOCTOR_FAIL" -eq 0 ]; then
-    printf "${CN_GRN}全部检查通过。${CN_RST}\n"
+    if [ "$CN_DOCTOR_WARN" -gt 0 ]; then
+      printf "${CN_GRN}没有发现失败项。${CN_RST}带 ! 的 ${CN_DOCTOR_WARN} 项需要留意。\n"
+    else
+      printf "${CN_GRN}全部检查通过。${CN_RST}\n"
+    fi
     return 0
   fi
-  printf "${CN_YEL}存在失败项，见上方 ✗ 标记。${CN_RST}\n"
+  printf "${CN_YEL}有检查项没通过，见上方 ✗ 标记。${CN_RST}\n"
   return 1
 }

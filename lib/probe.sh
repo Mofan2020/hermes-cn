@@ -166,7 +166,7 @@ cn_select_raw() {
     _name=$(printf '%s' "$_line" | cut -d'|' -f1)
     _prefix=$(printf '%s' "$_line" | cut -d'|' -f2)
     [ -n "$_name" ] && [ -n "$_prefix" ] || continue
-    cn_log "探测 raw 代理：${_name}"
+    cn_log "探测文件下载代理：${_name}"
     if cn_probe_raw "$_prefix"; then
       printf '%s|%s' "$_name" "$_prefix"
       IFS="$_oldifs"

@@ -6,7 +6,7 @@
 #   ./hermes-cn.sh              进入加速环境（交互 shell）
 #   ./hermes-cn.sh run <命令>   在加速环境里跑一条命令
 #   ./hermes-cn.sh doctor       自检
-#   ./hermes-cn.sh apply        改写 lock + 配置 git 传输层（持久生效）
+#   ./hermes-cn.sh apply        把依赖清单指向镜像，并设置 Git 下载镜像
 #   ./hermes-cn.sh restore      撤销 apply 的改动
 #   ./hermes-cn.sh install      用镜像安装 Hermes
 #   ./hermes-cn.sh env          打印可 source 的环境变量
@@ -44,18 +44,18 @@ hermes-cn —— Hermes 大陆网络加速
 
 命令：
   (无)              进入加速环境（交互 shell），退出即恢复
-  run <命令>        在加速环境里执行一条命令并原样返回退出码
-  env               打印可 source 的环境变量（eval "$(hermes-cn.sh env)"）
-  doctor            自检：检查各镜像可用性、lock 完整性、origin 语义
-  apply             改写 uv.lock 指向镜像 + 配置 git 传输层改写（持久）
-  restore           撤销 apply 的所有改动，还原 uv.lock 与 git 配置
+  run <命令>        在加速环境里执行一条命令，原样返回它的退出码
+  env               打印可以导出的环境变量（eval "$(hermes-cn.sh env)"）
+  doctor            自检：镜像是否可用、依赖清单是否正常、更新通道是否完好
+  apply             把依赖清单指向国内镜像，并让 Git 下载走镜像（长期生效）
+  restore           撤销 apply 的所有改动，还原依赖清单和 Git 配置
   install           用镜像全新安装 Hermes 到 ~/.hermes/hermes-agent
   help              显示本帮助
 
 选项：
-  --pypi-mirror <名>   跳过探测，强制使用指定 PyPI 镜像
-  --git-mirror <前缀>  跳过探测，强制使用指定 Git 镜像
-  --no-probe           不做探测，直接用默认首选源
+  --pypi-mirror <名>   跳过探测，强制使用指定的 PyPI 镜像
+  --git-mirror <地址>  跳过探测，强制使用指定的 Git 镜像地址
+  --no-probe           不做探测，直接用默认的首选源
   --yes, -y            不询问，直接执行
   --version, -v        显示版本
 
@@ -152,7 +152,7 @@ cn_resolve_sources() {
     CN_GH_PROXY_NAME=$(printf '%s' "$sel" | cut -d'|' -f1)
     CN_GH_PROXY_PREFIX=$(printf '%s' "$sel" | cut -d'|' -f2)
   else
-    cn_warn "没有可用的 GitHub release 代理，lock 中的 GitHub 直链依赖可能拉取失败"
+    cn_warn "没有可用的 GitHub 下载代理，部分依赖可能拉取失败"
   fi
 
   # ---- raw ----
@@ -208,7 +208,7 @@ cmd_shell() {
   cn_step "加速环境已就绪"
   printf "  PyPI 镜像 : %s (%s)\n" "$CN_PYPI_NAME" "$CN_PYPI_INDEX"
   [ -n "$CN_GIT_NAME" ] && printf "  Git 镜像  : %s (%s)\n" "$CN_GIT_NAME" "$CN_GIT_URL"
-  [ -n "$CN_RAW_NAME" ] && printf "  raw 代理  : %s\n" "$CN_RAW_NAME"
+  [ -n "$CN_RAW_NAME" ] && printf "  文件代理  : %s\n" "$CN_RAW_NAME"
   printf "  ${CN_DIM}提示：直接运行 hermes update、bash scripts/install.sh 或任意联网命令即可。${CN_RST}\n\n"
 
   _script=$(cn_new_tmp_file) || return 1
@@ -250,7 +250,7 @@ cmd_apply() {
     cn_die "未找到 Hermes 安装目录。请先安装 Hermes，或用 HERMES_HOME 指定路径。"
   fi
 
-  cn_step "改写 uv.lock → ${CN_PYPI_NAME}"
+  cn_step "把依赖清单指向 ${CN_PYPI_NAME} 镜像"
   local lock
   for lock in "$hermes/uv.lock" "$hermes/pm/uv.lock"; do
     [ -f "$lock" ] || continue
@@ -263,7 +263,7 @@ cmd_apply() {
 
   # pyproject.toml 里也声明了 GitHub 地址，必须与 lock 一起改写，
   # 否则 uv lock --check 会报「lockfile needs to be updated」。
-  cn_step "改写 pyproject.toml 中的 GitHub 地址"
+  cn_step "把依赖声明里的 GitHub 地址一起改掉"
   for pp in "$hermes/pyproject.toml" "$hermes/pm/pyproject.toml"; do
     [ -f "$pp" ] || continue
     if cn_rewrite_pyproject "$pp" "$CN_GH_PROXY_PREFIX"; then
@@ -274,33 +274,33 @@ cmd_apply() {
   done
 
   # 校验自洽
-  cn_log "校验 uv lock --check ..."
+  cn_log "检查依赖清单是否自洽 ..."
   if cn_uv_lock_check "$hermes"; then
-    cn_ok "uv lock --check 通过"
+    cn_ok "依赖清单自检通过"
   else
-    cn_warn "uv lock --check 未通过，请执行 hermes-cn.sh doctor 查看详情"
+    cn_warn "依赖清单自检没通过，请执行 hermes-cn.sh doctor 查看详情"
   fi
 
-  cn_step "配置 Git 传输层改写 → ${CN_GIT_NAME}"
+  cn_step "让 Git 下载走 ${CN_GIT_NAME} 镜像"
   if [ -n "$CN_GIT_URL" ]; then
     # repo-local insteadOf：Hermes 内部 git 会丢弃环境变量注入，
     # 但 repo-local config 仍然生效。
     if cn_git_local_instead_of "$hermes" "$CN_OFFICIAL_ORIGIN" "$CN_GIT_URL"; then
-      cn_ok "已写入 repo-local insteadOf（仅影响本仓库）"
+      cn_ok "已为这个仓库单独设置镜像（不影响你其它仓库）"
     else
-      cn_warn "写入 repo-local insteadOf 失败"
+      cn_warn "为这个仓库设置镜像失败"
     fi
     # 全局 config：仅改写 Hermes 官方仓库这一条精确地址，
     # 不做站点级改写，避免影响用户自己的其它 GitHub 仓库。
     cn_git_global_instead_of "$CN_OFFICIAL_ORIGIN" "$CN_GIT_URL" &&
-      cn_ok "已写入全局 insteadOf（仅 Hermes 官方仓库）"
+      cn_ok "已为 Hermes 官方仓库设置全局镜像（不影响你其它仓库）"
   fi
 
-  cn_step "校验 origin 语义"
+  cn_step "检查仓库来源地址"
   if cn_git_origin_is_official "$hermes"; then
-    cn_ok "remote.origin.url 保持官方地址（更新通道不受影响）"
+    cn_ok "仓库来源地址仍是官方 GitHub（更新通道不受影响）"
   else
-    cn_warn "remote.origin.url 不是官方地址：$(git -C "$hermes" config --get remote.origin.url 2>/dev/null)"
+    cn_warn "仓库来源地址不是官方地址：$(git -C "$hermes" config --get remote.origin.url 2>/dev/null)"
   fi
 
   printf "\n${CN_GRN}加速配置已生效。${CN_RST}\n"
@@ -315,7 +315,7 @@ cmd_restore() {
     cn_die "未找到 Hermes 安装目录。"
   fi
 
-  cn_step "还原 uv.lock"
+  cn_step "还原依赖清单"
   local lock restored=0
   for lock in "$hermes/uv.lock" "$hermes/pm/uv.lock"; do
     if [ -f "${lock}${CN_LOCK_BACKUP_SUFFIX}" ]; then
@@ -331,12 +331,12 @@ cmd_restore() {
       cn_restore_pyproject "$pp" && cn_ok "已还原：${pp}" && restored=1
     fi
   done
-  [ "$restored" -eq 1 ] || cn_warn "没有需要还原的 lock 备份"
+  [ "$restored" -eq 1 ] || cn_warn "没有需要还原的备份"
 
-  cn_step "移除 Git 传输层改写"
+  cn_step "移除 Git 镜像设置"
   git -C "$hermes" config --local --unset-all "url.${CN_GIT_URL}.insteadOf" 2>/dev/null || true
   git config --global --unset-all "url.${CN_GIT_URL}.insteadOf" 2>/dev/null || true
-  cn_ok "已移除 insteadOf 配置"
+  cn_ok "已移除 Git 镜像设置"
 
   printf "\n${CN_GRN}已恢复到官方直连状态。${CN_RST}\n"
 }
@@ -358,20 +358,20 @@ cmd_install() {
   if ! cn_git_clone_mirror "$CN_GIT_URL" "$target"; then
     cn_die "clone 失败：${CN_GIT_URL}"
   fi
-  cn_ok "已 clone 到 ${target}"
+  cn_ok "已下载到 ${target}"
 
   # 关键：origin 必须保持官方地址，否则更新通道掉成非官方
   git -C "$target" remote set-url origin "$CN_OFFICIAL_ORIGIN" &&
-    cn_ok "origin 已设为官方地址（更新通道保持官方）"
+    cn_ok "仓库来源已设为官方地址（更新通道保持官方）"
 
   # 传输层改写
   if [ -n "$CN_GIT_URL" ]; then
     cn_git_local_instead_of "$target" "$CN_OFFICIAL_ORIGIN" "$CN_GIT_URL" &&
-      cn_ok "已写入 repo-local insteadOf（仅影响本仓库）"
+      cn_ok "已为这个仓库单独设置镜像（不影响你其它仓库）"
   fi
 
-  # lock 改写
-  cn_step "改写 uv.lock → ${CN_PYPI_NAME}"
+  # 改写依赖清单
+  cn_step "把依赖清单指向 ${CN_PYPI_NAME} 镜像"
   local lock
   for lock in "$target/uv.lock" "$target/pm/uv.lock"; do
     [ -f "$lock" ] || continue
