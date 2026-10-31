@@ -13,18 +13,42 @@ GitHub 拉不动、pip 装不上、`hermes update` 卡在半路——这类问�
 
 ## 快速开始
 
-先把仓库拉下来并进入目录：
+### 第一步：下载
+
+从 Releases 页面下载整个压缩包：
+
+https://github.com/Mofan2020/hermes-cn/releases/latest
+
+在页面里选「Source code (zip)」或者「Source code (tar.gz)」下载。GitHub 会把整个仓库打包好，不用自己挑文件。
+
+不想用压缩包、习惯用 git 的话，也可以克隆：
 
 ```bash
 git clone https://github.com/Mofan2020/hermes-cn.git
 cd hermes-cn
 ```
 
-先自检一遍，看看当前网络下各镜像通不通：
+### 第二步：给脚本加上执行权限
+
+从压缩包里解压出来的文件没有执行权限，需要先加一次：
+
+```bash
+chmod +x hermes-cn.sh
+```
+
+用 git 克隆的可以跳过这步。
+
+注意 `lib` 目录要和 `hermes-cn.sh` 放在同一个目录里，缺了它脚本跑不起来。
+
+### 第三步：先自检一遍
+
+看看当前网络下各镜像通不通：
 
 ```bash
 ./hermes-cn.sh doctor
 ```
+
+### 第四步：开始用
 
 最常见的用法，是给一条命令加速。更新 Hermes：
 
@@ -84,6 +108,14 @@ cd hermes-cn
 **装不上的时候会说清楚。** 如果所有国内镜像都连不上，工具会直接报错，不会随便挑一个连不通的地址继续往下跑。
 
 ## 常见问题
+
+**只下载 hermes-cn.sh 一个文件行不行？**
+
+不行。这个脚本要配合同目录下的 `lib` 目录一起用，少一个文件都跑不起来（脚本会直接告诉你缺了哪几个）。下载整个压缩包最省事。
+
+**压缩包里的文件为什么不能直接运行？**
+
+从压缩包解压出来的文件没有执行权限，先 `chmod +x hermes-cn.sh` 再用。
 
 **怎么撤销？**
 

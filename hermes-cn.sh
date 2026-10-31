@@ -18,6 +18,20 @@ set -u
 
 CN_SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# lib 目录必须和本脚本放在一起。只拷走单个 .sh 是跑不起来的，
+# 这里提前检查并给出明确提示，而不是让后面刷出一堆「文件不存在」。
+CN_MISSING_LIBS=""
+for _cn_lib in common sources probe pypi git env doctor; do
+  [ -f "$CN_SELF_DIR/lib/$_cn_lib.sh" ] || CN_MISSING_LIBS="${CN_MISSING_LIBS} lib/$_cn_lib.sh"
+done
+if [ -n "$CN_MISSING_LIBS" ]; then
+  printf 'hermes-cn：缺少配套文件，跑不起来。\n' >&2
+  printf '  缺少：%s\n' "$CN_MISSING_LIBS" >&2
+  printf '  请把整个目录一起下载，lib 目录必须和 hermes-cn.sh 放在一起。\n' >&2
+  printf '  下载地址：https://github.com/Mofan2020/hermes-cn/releases/latest\n' >&2
+  exit 1
+fi
+
 # shellcheck source=lib/common.sh
 . "$CN_SELF_DIR/lib/common.sh"
 # shellcheck source=lib/sources.sh
