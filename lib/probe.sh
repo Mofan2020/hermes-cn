@@ -65,6 +65,23 @@ cn_probe_git() {
   return 0
 }
 
+# 探测结果缓存。
+# Git 镜像的 ls-remote 实测要 40~55 秒，重复探测会让 doctor 慢到不可用。
+# 同一个 URL 只探一次，之后直接复用结论。
+CN_GIT_PROBE_CACHE=""
+
+_cn_probe_git_cached() {
+  _url="$1"
+  case " ${CN_GIT_PROBE_CACHE} " in
+    *" ${_url} "*) return 0 ;;   # 已判定为可用
+  esac
+  if cn_probe_git "$_url"; then
+    CN_GIT_PROBE_CACHE="${CN_GIT_PROBE_CACHE} ${_url}"
+    return 0
+  fi
+  return 1
+}
+
 # 探测一个 raw 代理是否可用。
 cn_probe_raw() {
   _prefix="$1"
@@ -121,7 +138,7 @@ cn_select_git() {
       _url=$(printf '%s' "$_line" | cut -d'|' -f2)
       [ -n "$_name" ] && [ -n "$_url" ] || continue
       cn_log "探测 Git 镜像：${_name}"
-      if cn_probe_git "$_url"; then
+      if _cn_probe_git_cached "$_url"; then
         printf '%s|%s' "$_name" "$_url"
         IFS="$_oldifs"
         return 0
