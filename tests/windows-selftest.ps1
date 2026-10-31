@@ -1,4 +1,4 @@
-﻿﻿#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
     Windows 版自检。不联网，只验证改写 / 还原 / 参数解析这些逻辑。
 

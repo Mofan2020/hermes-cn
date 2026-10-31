@@ -1,4 +1,4 @@
-﻿﻿﻿#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     hermes-cn —— Hermes 大陆网络加速（Windows 版）
@@ -172,8 +172,8 @@ function Get-HermesHome {
     $candidates = @()
     if ($env:HERMES_HOME) { $candidates += $env:HERMES_HOME }
     if ($env:USERPROFILE) {
-        $candidates += (Join-Path $env:USERPROFILE '.hermes\hermes-agent')
-        $candidates += (Join-Path $env:USERPROFILE '.hermes\hermes')
+        $candidates += (Join-Path $env:USERPROFILE '.hermes/hermes-agent')
+        $candidates += (Join-Path $env:USERPROFILE '.hermes/hermes')
     }
     foreach ($c in $candidates) {
         if (-not $c) { continue }
@@ -493,8 +493,11 @@ function Test-InsteadOfEffective {
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
     $psi.WorkingDirectory = $Repo
-    $psi.EnvironmentVariables['GIT_CONFIG_GLOBAL'] = 'NUL'
-    $psi.EnvironmentVariables['GIT_CONFIG_SYSTEM'] = 'NUL'
+    # Windows 的空设备是 NUL，别的系统是 /dev/null
+    $NullDevice = '/dev/null'
+    if ($env:OS -eq 'Windows_NT') { $NullDevice = 'NUL' }
+    $psi.EnvironmentVariables['GIT_CONFIG_GLOBAL'] = $NullDevice
+    $psi.EnvironmentVariables['GIT_CONFIG_SYSTEM'] = $NullDevice
     $psi.EnvironmentVariables['GIT_CONFIG_NOSYSTEM'] = '1'
     $psi.EnvironmentVariables['GIT_TERMINAL_PROMPT'] = '0'
     $proc = New-Object System.Diagnostics.Process
@@ -896,7 +899,7 @@ function Invoke-Apply {
     }
 
     Write-Step "把依赖清单指向 $($Script:PypiName) 镜像"
-    foreach ($lock in @((Join-Path $hermes 'uv.lock'), (Join-Path $hermes 'pm\uv.lock'))) {
+    foreach ($lock in @((Join-Path $hermes 'uv.lock'), (Join-Path $hermes 'pm/uv.lock'))) {
         if (-not (Test-Path -LiteralPath $lock)) { continue }
         if (Invoke-LockRewrite -LockPath $lock -PkgPrefix $Script:PypiPkg -Index $Script:PypiIndex -GhPrefix $Script:GhProxyPrefix) {
             Write-Ok "已改写：$lock"
@@ -907,7 +910,7 @@ function Invoke-Apply {
     }
 
     Write-Step '把依赖声明里的 GitHub 地址一起改掉'
-    foreach ($pp in @((Join-Path $hermes 'pyproject.toml'), (Join-Path $hermes 'pm\pyproject.toml'))) {
+    foreach ($pp in @((Join-Path $hermes 'pyproject.toml'), (Join-Path $hermes 'pm/pyproject.toml'))) {
         if (-not (Test-Path -LiteralPath $pp)) { continue }
         if (Invoke-PyprojectRewrite -PyprojectPath $pp -GhPrefix $Script:GhProxyPrefix) {
             Write-Ok "已改写：$pp"
@@ -960,13 +963,13 @@ function Invoke-Restore {
 
     Write-Step '还原依赖清单'
     $restored = $false
-    foreach ($lock in @((Join-Path $hermes 'uv.lock'), (Join-Path $hermes 'pm\uv.lock'))) {
+    foreach ($lock in @((Join-Path $hermes 'uv.lock'), (Join-Path $hermes 'pm/uv.lock'))) {
         if (Restore-FromBackup -Path $lock) {
             Write-Ok "已还原：$lock"
             $restored = $true
         }
     }
-    foreach ($pp in @((Join-Path $hermes 'pyproject.toml'), (Join-Path $hermes 'pm\pyproject.toml'))) {
+    foreach ($pp in @((Join-Path $hermes 'pyproject.toml'), (Join-Path $hermes 'pm/pyproject.toml'))) {
         if (Restore-FromBackup -Path $pp) {
             Write-Ok "已还原：$pp"
             $restored = $true
@@ -999,7 +1002,7 @@ function Invoke-Install {
 
     $target = $Script:InstallTarget
     if (-not $target) {
-        $target = Join-Path $env:USERPROFILE '.hermes\hermes-agent'
+        $target = Join-Path $env:USERPROFILE '.hermes/hermes-agent'
     }
     Write-Step "从 $($Script:GitName) 安装 Hermes → $target"
 
@@ -1040,13 +1043,13 @@ function Invoke-Install {
     }
 
     Write-Step "把依赖清单指向 $($Script:PypiName) 镜像"
-    foreach ($lock in @((Join-Path $target 'uv.lock'), (Join-Path $target 'pm\uv.lock'))) {
+    foreach ($lock in @((Join-Path $target 'uv.lock'), (Join-Path $target 'pm/uv.lock'))) {
         if (-not (Test-Path -LiteralPath $lock)) { continue }
         if (Invoke-LockRewrite -LockPath $lock -PkgPrefix $Script:PypiPkg -Index $Script:PypiIndex -GhPrefix $Script:GhProxyPrefix) {
             Write-Ok "已改写：$lock"
         }
     }
-    foreach ($pp in @((Join-Path $target 'pyproject.toml'), (Join-Path $target 'pm\pyproject.toml'))) {
+    foreach ($pp in @((Join-Path $target 'pyproject.toml'), (Join-Path $target 'pm/pyproject.toml'))) {
         if (-not (Test-Path -LiteralPath $pp)) { continue }
         if (Invoke-PyprojectRewrite -PyprojectPath $pp -GhPrefix $Script:GhProxyPrefix) {
             Write-Ok "已改写：$pp"
