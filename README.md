@@ -4,6 +4,8 @@ hermes-cn 是给大陆网络环境用的 Hermes Agent 加速工具。
 
 GitHub 拉不动、pip 装不上、`hermes update` 卡在半路——这类问题装上这个工具就能绕过去。它会在每次启动时挨个连一遍内置的国内镜像，挑一个当前真正能用的用上，然后你可以直接跑 `hermes update`、官方的 `bash scripts/install.sh`，或者任何需要联网的命令。
 
+macOS 和 Linux 是主力平台，更新最快。Windows 版功能一样，但会在 macOS / Linux 版稳定之后才跟进。Windows 的用法见下面「Windows」一节。
+
 ## 什么时候用得上
 
 - `hermes update` 卡住不动，或者中途报网络错误，版本停在半路上。
@@ -80,6 +82,46 @@ chmod +x hermes-cn.sh
 ./hermes-cn.sh
 ```
 
+## Windows
+
+Windows 版单独提供，命令跟 macOS / Linux 版完全一样。
+
+不需要装任何额外东西，用 Windows 自带的 PowerShell 5.1 或更高版本就行（Win10 / Win11 都自带）。
+
+### 下载和运行
+
+1. 从 Releases 页面下载 Source code (zip)，解压。
+2. 进入解压出来的目录。
+3. 在命令提示符或 PowerShell 里运行：
+
+```bat
+hermes-cn.cmd doctor
+hermes-cn.cmd run hermes update
+hermes-cn.cmd apply
+```
+
+`hermes-cn.cmd` 会自动把控制台切到 UTF-8，脚本文件本身也是按 UTF-8 保存的，中文提示不会乱码。
+
+### 两个小提醒
+
+指定镜像时建议用英文别名，中文名在 Windows PowerShell 5.1 里传参可能变成乱码：
+
+```bat
+hermes-cn.cmd --pypi-mirror tuna run hermes update
+```
+
+可用的英文别名：tuna（清华）、ustc（中科大）、aliyun（阿里云）、tencent（腾讯云）、bfsu（北京外国语）、huawei（华为云）。
+
+如果安全软件拦下了脚本，在 PowerShell 里这样跑：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\hermes-cn.ps1 doctor
+```
+
+### 版本节奏
+
+macOS / Linux 版先更新，Windows 版等 macOS / Linux 版跑稳了再同步。Windows 上遇到怪问题，先按 macOS / Linux 版的行为对照着看。
+
 ## 命令一览
 
 - `./hermes-cn.sh`：进入加速环境交互 shell，退出即恢复原样。
@@ -90,6 +132,8 @@ chmod +x hermes-cn.sh
 - `./hermes-cn.sh restore`：撤销 `apply` 做过的全部改动。
 - `./hermes-cn.sh install`：通过镜像全新安装 Hermes 到 `~/.hermes/hermes-agent`。
 - `./hermes-cn.sh help`：查看用法。
+
+Windows 上把 `hermes-cn.sh` 换成 `hermes-cn.cmd` 即可，命令名完全相同。
 
 选项：
 
@@ -120,6 +164,10 @@ chmod +x hermes-cn.sh
 **解压之后提示 Permission denied 怎么办？**
 
 加上执行权限再运行：`chmod +x hermes-cn.sh`。
+
+**Windows 上中文参数乱码怎么办？**
+
+指定镜像时改用英文别名（tuna、ustc、aliyun、tencent、bfsu、huawei），例如 `hermes-cn.cmd --pypi-mirror tuna run hermes update`。Windows PowerShell 5.1 传中文参数时容易变成乱码，英文别名没这个问题。
 
 **怎么撤销？**
 

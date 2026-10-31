@@ -1,0 +1,6 @@
+# Windows 用的两个文件保持 CRLF 换行，不要被 Git 转换
+*.ps1 -text
+*.cmd -text
+
+# 现有的 shell 脚本保持 LF
+*.sh text eol=lf
