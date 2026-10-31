@@ -37,17 +37,26 @@
 
 CN_LOCK_BACKUP_SUFFIX=".hermes-cn.bak"
 
-# 从 lock 里取一个真实制品的相对路径，用于验证镜像是否带齐 Hermes 所需包。
-# 优先取 wheel（有确定文件名），退回任意制品。
+# cn_lock_sample_artifact <lock 文件>
+# 从 lock 里取一个真实制品的相对路径（/packages/... 形式），用于验证
+# 镜像是否带齐 Hermes 所需包。
+#
+# 必须同时匹配原始的 files.pythonhosted.org 和改写后的镜像地址，
+# 否则在已经改写的 lock 上取不到样本。
 cn_lock_sample_artifact() {
   _lock="$1"
   [ -f "$_lock" ] || return 1
   _rel=$(grep -o 'https://files\.pythonhosted\.org/packages/[^"]*\.whl' "$_lock" 2>/dev/null | head -1)
   if [ -z "$_rel" ]; then
+    _rel=$(grep -o 'https://[^"]*/packages/[^"]*\.whl' "$_lock" 2>/dev/null | head -1)
+  fi
+  if [ -z "$_rel" ]; then
     _rel=$(grep -o 'https://files\.pythonhosted\.org/packages/[^"]*' "$_lock" 2>/dev/null | head -1)
   fi
   [ -n "$_rel" ] || return 1
-  printf '%s' "${_rel#https://files.pythonhosted.org/}"
+  # 只返回 /packages/ 之后的部分。调用方用 <packages 前缀><这里> 拼出完整地址，
+  # 前缀里已经含有 /packages/，所以这里不能再重复一遍。
+  printf '%s' "${_rel#*/packages/}"
 }
 
 # cn_rewrite_lock <lock 文件> <packages 前缀> <simple 索引> [github 代理前缀]
@@ -152,9 +161,21 @@ cn_verify_lock_hash() {
   _lock="$1"; _pkg_prefix="$2"; _rel="$3"
   [ -f "$_lock" ] || return 1
 
-  # 从 lock 里读出该制品的期望哈希
-  _expected=$(grep -o "url = \"[^\"]*$(printf '%s' "$_rel" | sed 's/[].[^$\\*/]/\\&/g')\"[^}]*hash = \"sha256:[0-9a-f]*\"" "$_lock" 2>/dev/null | head -1 |
-             sed -n 's/.*hash = "sha256:\([0-9a-f]*\)".*/\1/p')
+  # 从 lock 里读出该制品的期望哈希。
+  # 用 awk 精确匹配「同一行里的 url 与 hash」，避免 sed 转义地狱。
+  _base=$(basename "$_rel")
+  _expected=$(awk -v base="$_base" '
+    index($0, "url = \"") && index($0, base) {
+      if (match($0, /hash = "sha256:[0-9a-f]+"/)) {
+        # 去掉前缀 hash = "sha256:" 与结尾的引号
+        s = substr($0, RSTART, RLENGTH)
+        sub(/^hash = "sha256:/, "", s)
+        sub(/"$/, "", s)
+        print s
+        exit
+      }
+    }
+  ' "$_lock" 2>/dev/null)
   [ -n "$_expected" ] || return 1
 
   _tmpdir=$(cn_new_tmp) || return 1
