@@ -49,7 +49,7 @@ fi
 # shellcheck source=lib/accel.sh
 . "$CN_SELF_DIR/lib/accel.sh"
 
-CN_VERSION="1.1.0"
+CN_VERSION="1.1.1"
 
 cn_usage() {
   cat <<'EOF'

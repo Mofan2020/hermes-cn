@@ -44,6 +44,7 @@ CN_ACCEL_ENV_FILE="$CN_ACCEL_DIR/env.sh"
 # 2026-11-03 实测：
 #   gh-proxy.com   下载可用、git 可用
 #   gh-proxy.cc    下载可用、git 可用
+#   ghproxy.icu    下载可用、git 可用
 #   ghproxy.net    下载可用、git 时好时坏
 #   gitclone.com   git 可用（整站镜像，下载域名不支持）
 #   其余候选当天不通，但过段时间可能恢复，所以仍然留着，探测时自动跳过。
@@ -53,6 +54,7 @@ CN_ACCEL_ENV_FILE="$CN_ACCEL_DIR/env.sh"
 CN_ACCEL_NODES="
 gh-proxy.com|https://gh-proxy.com/https://github.com/|https://gh-proxy.com/https://|https://gh-proxy.com/https://github.com/octocat/Hello-World.git
 gh-proxy.cc|https://gh-proxy.cc/https://github.com/|https://gh-proxy.cc/https://|https://gh-proxy.cc/https://github.com/octocat/Hello-World.git
+ghproxy.icu|https://ghproxy.icu/https://github.com/|https://ghproxy.icu/https://|https://ghproxy.icu/https://github.com/octocat/Hello-World.git
 ghproxy.net|https://ghproxy.net/https://github.com/|https://ghproxy.net/https://|https://ghproxy.net/https://github.com/octocat/Hello-World.git
 www.gh-proxy.cc|https://www.gh-proxy.cc/https://github.com/|https://www.gh-proxy.cc/https://|https://www.gh-proxy.cc/https://github.com/octocat/Hello-World.git
 gh-proxy.net|https://gh-proxy.net/https://github.com/|https://gh-proxy.net/https://|https://gh-proxy.net/https://github.com/octocat/Hello-World.git
