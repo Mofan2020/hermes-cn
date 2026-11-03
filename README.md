@@ -122,6 +122,39 @@ powershell -ExecutionPolicy Bypass -File .\hermes-cn.ps1 doctor
 
 macOS / Linux 版先更新，Windows 版等 macOS / Linux 版跑稳了再同步。Windows 上遇到怪问题，先按 macOS / Linux 版的行为对照着看。
 
+## GitHub 加速环境
+
+除了给 Hermes 加速，这个工具还能给整台机器准备一个 GitHub 加速环境：`git clone` 会自动走国内的中转节点，下载 release 文件也有专门的命令。
+
+这些节点有两种玩法：有的把地址换成 `https://<节点>/https://github.com/owner/repo`，有的换成 `https://<节点>/github.com/owner/repo`。不管哪种，文件都是节点替你取回来的。节点用的是自己的正规证书，不涉及自签证书，所以不会出现「证书不受信任」；万一哪个节点的证书有问题，探测时就会直接把它剔掉。
+
+目前只有 macOS 和 Linux 有这个功能，Windows 版暂时没有。
+
+### 开启
+
+```bash
+./hermes-cn.sh accel setup
+```
+
+它会挨个探测候选节点，三件事都过才算数：能不能连上、返回的是不是真文件（比对哈希，防止拿到反爬网页）、git 协议能不能用。挑中一个当前真正能用的之后，把 GitHub 地址写进全局 git 配置。
+
+### 常用命令
+
+- `./hermes-cn.sh accel probe`：把所有候选节点挨个测一遍，看谁还能用
+- `./hermes-cn.sh accel status`：看当前用的是哪个节点
+- `./hermes-cn.sh accel download <GitHub 地址>`：下载一个 GitHub 文件，走当前节点
+- `./hermes-cn.sh accel env`：打印环境变量，给不读 git 配置的工具用
+- `./hermes-cn.sh accel uninstall`：撤销全部改动
+
+### 几点说明
+
+- **私有仓库不受影响。** 访问私有仓库必须带凭据，地址形如 `https://user@github.com/...`，和这里改写的 `https://github.com/` 对不上。
+- **节点有快有慢，也会时好时坏。** 内置十几个候选，每次开启都会重新探测，节点坏了会自动换下一个。
+- **只能下载的节点不会去改写 clone 的地址。** 万一挑到的节点只能下载，工具会明确告诉你，clone 仍然直连，免得 clone 直接失败。
+- **大仓库可能还是会慢。** 节点是现拉的，小仓库几秒就好，大仓库要等它把仓库拉下来。
+- **curl 这类工具不读 git 配置**，所以它们不会自动加速。用 `./hermes-cn.sh accel download <地址>` 下载，或者自己拿 `accel env` 里的地址去拼。
+- **想加自己的节点**：在 `~/.hermes-cn/accel/nodes.txt` 里写一行「名称|替换地址|下载前缀|探测地址」，会和内置的一起被探测。
+
 ## 命令一览
 
 - `./hermes-cn.sh`：进入加速环境交互 shell，退出即恢复原样。

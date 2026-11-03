@@ -136,9 +136,11 @@ cn_select_git() {
       case "$_line" in \#*) continue ;; esac
       _name=$(printf '%s' "$_line" | cut -d'|' -f1)
       _url=$(printf '%s' "$_line" | cut -d'|' -f2)
+      _probe=$(printf '%s' "$_line" | cut -d'|' -f3)
       [ -n "$_name" ] && [ -n "$_url" ] || continue
+      [ -n "$_probe" ] || _probe="$_url"
       cn_log "探测 Git 镜像：${_name}"
-      if _cn_probe_git_cached "$_url"; then
+      if _cn_probe_git_cached "$_probe"; then
         printf '%s|%s' "$_name" "$_url"
         IFS="$_oldifs"
         return 0

@@ -46,8 +46,10 @@ fi
 . "$CN_SELF_DIR/lib/env.sh"
 # shellcheck source=lib/doctor.sh
 . "$CN_SELF_DIR/lib/doctor.sh"
+# shellcheck source=lib/accel.sh
+. "$CN_SELF_DIR/lib/accel.sh"
 
-CN_VERSION="1.0.2"
+CN_VERSION="1.1.0"
 
 cn_usage() {
   cat <<'EOF'
@@ -64,6 +66,7 @@ hermes-cn —— Hermes 大陆网络加速
   apply             把依赖清单指向国内镜像，并让 Git 下载走镜像（长期生效）
   restore           撤销 apply 的所有改动，还原依赖清单和 Git 配置
   install           用镜像全新安装 Hermes 到 ~/.hermes/hermes-agent
+  accel <子命令>    GitHub 加速环境：setup / probe / status / env / download / test / uninstall
   help              显示本帮助
 
 选项：
@@ -411,6 +414,7 @@ case "$CN_CMD" in
   apply)  cmd_apply ;;
   restore) cmd_restore ;;
   install) cmd_install "$@" ;;
+  accel)  cn_accel_cmd "$@" ;;
   *)
     cn_err "未知命令：${CN_CMD}"
     cn_usage >&2

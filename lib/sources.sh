@@ -40,23 +40,26 @@ CN_PYPI_CANDIDATES_EXTRA="
 "
 
 # ---------- GitHub 仓库镜像 ----------
-# 格式：<名称>|<镜像上的完整仓库 URL>
+# 格式：<名称>|<镜像上的完整仓库 URL>[|探测用的地址]
 #
-# 这里存的是完整 URL 而不是前缀，因为各镜像的路径规则不同：
-# gitcode 的镜像路径会丢掉 owner（GitHub_Trending/he/hermes-agent.git，
-# 而不是 GitHub_Trending/he/NousResearch/hermes-agent.git），
-# 用前缀拼接会得到 403 的错误地址。
+# 第三列是探测地址：用一个很小的公开仓库去测节点通不通。
+# 节点是现拉的，拿大仓库探测会等很久（有的节点要现建镜像），
+# 小仓库几秒就能出结果。
 #
-# 实测（真 clone / 有 refs 的 ls-remote 判定）：
-#   GitCode      GitHub_Trending/he/hermes-agent.git  可用（HEAD fcc26fbd，420 个 tag）
-#   gh-proxy.cc  代理前缀形式可用（release 与 git 协议均已校验字节与哈希）
-#   gh-proxy.net 对 release 直链返回 HTML 反爬页，不可用
-#   gitclone     502
-#   gitmirror    DNS 解析失败
+# 2026-11-03 实测：
+#   gh-proxy.cc   git 协议可用
+#   gh-proxy.com  git 协议可用
+#   GitCode       现在要登录了，匿名拉不了（会提示输入用户名）
+#   gitclone      502
+#   hub.gitmirror 域名解析失败
 CN_GIT_CANDIDATES="
-GitCode|https://gitcode.com/GitHub_Trending/he/hermes-agent.git
-gh-proxy.cc|https://gh-proxy.cc/https://github.com/NousResearch/hermes-agent.git
+gh-proxy.cc|https://gh-proxy.cc/https://github.com/NousResearch/hermes-agent.git|https://gh-proxy.cc/https://github.com/octocat/Hello-World.git
+gh-proxy.com|https://gh-proxy.com/https://github.com/NousResearch/hermes-agent.git|https://gh-proxy.com/https://github.com/octocat/Hello-World.git
+www.gh-proxy.cc|https://www.gh-proxy.cc/https://github.com/NousResearch/hermes-agent.git|https://www.gh-proxy.cc/https://github.com/octocat/Hello-World.git
 "
+
+# 想用 GitCode 的话得有账号，可以自己指定：
+#   ./hermes-cn.sh --git-mirror https://gitcode.com/GitHub_Trending/he/hermes-agent.git run hermes update
 
 # 可选的 Gitee 自建镜像回退。
 # 硬结论：Gitee 匿名不可用 —— gitee.com/mirrors/hermes-agent.git 需要登录，
