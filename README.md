@@ -6,6 +6,8 @@ GitHub 拉不动、pip 装不上、`hermes update` 卡在半路——这类问�
 
 macOS 和 Linux 是主力平台，更新最快。Windows 版功能一样，但会在 macOS / Linux 版稳定之后才跟进。Windows 的用法见下面「Windows」一节。
 
+除了给终端里的命令加速，这个工具还能给 `git clone`、文件下载，以及浏览器访问 GitHub 准备一套加速环境，浏览器那部分见下面「浏览器访问 GitHub」。
+
 ## 什么时候用得上
 
 - `hermes update` 卡住不动，或者中途报网络错误，版本停在半路上。
@@ -155,6 +157,38 @@ macOS / Linux 版先更新，Windows 版等 macOS / Linux 版跑稳了再同步�
 - **curl 这类工具不读 git 配置**，所以它们不会自动加速。用 `./hermes-cn.sh accel download <地址>` 下载，或者自己拿 `accel env` 里的地址去拼。
 - **想加自己的节点**：在 `~/.hermes-cn/accel/nodes.txt` 里写一行「名称|替换地址|下载前缀|探测地址」，会和内置的一起被探测。
 
+## 浏览器访问 GitHub
+
+浏览器不读 Git 的配置，所以上面那套对浏览器没用。这个工具另外起了一个本地服务，浏览器通过它访问 GitHub，页面和图片、样式都走加速节点。
+
+只需要 macOS 和 Linux，Windows 版暂时没有这个功能。
+
+### 开启
+
+```bash
+./hermes-cn.sh web
+```
+
+它会挑好节点、启动服务，然后自动打开浏览器。以后直接用这个窗口访问 GitHub 就行。
+
+### 常用命令
+
+- `./hermes-cn.sh web`：启动服务并打开浏览器
+- `./hermes-cn.sh web serve`：只启动服务，不打开浏览器
+- `./hermes-cn.sh web stop`：停掉服务
+- `./hermes-cn.sh web clean`：清掉缓存
+- `./hermes-cn.sh web status`：看服务状态和访问地址
+- `./hermes-cn.sh web test`：自检
+
+### 几点说明
+
+- **不用装证书，也不用改系统设置。** 浏览器访问的是本机的一个普通网页地址，服务再帮你转到节点。停掉服务就完全恢复原样。
+- **不要在这个窗口里登录 GitHub。** 登录要提交账号密码，而请求会经过第三方节点。查看代码、下载文件这些都没问题，涉及自己账号的操作请回到官方网址。
+- **页面里的链接会自动跟着走。** 点仓库、翻页、下载文件，都还在加速通道里，不用手动改地址。
+- **节点抽风会自动换一个。** 加速节点时好时坏，某个节点取不回内容时会自动试下一个，全都试不通才会显示提示页。
+- **网页和样式可能走的是不同节点。** 各有所长，分开用反而更稳。
+- **第一次打开会慢一点。** 页面里的样式和图片会先存到本地，之后再打开就快了。想清掉重来，用 `web clean`。
+
 ## 命令一览
 
 - `./hermes-cn.sh`：进入加速环境交互 shell，退出即恢复原样。
@@ -164,6 +198,8 @@ macOS / Linux 版先更新，Windows 版等 macOS / Linux 版跑稳了再同步�
 - `./hermes-cn.sh apply`：把依赖清单指向国内镜像，并让 Git 下载走镜像，长期生效。
 - `./hermes-cn.sh restore`：撤销 `apply` 做过的全部改动。
 - `./hermes-cn.sh install`：通过镜像全新安装 Hermes 到 `~/.hermes/hermes-agent`。
+- `./hermes-cn.sh accel <子命令>`：GitHub 加速环境。
+- `./hermes-cn.sh web <子命令>`：浏览器访问 GitHub 的加速。
 - `./hermes-cn.sh help`：查看用法。
 
 Windows 上把 `hermes-cn.sh` 换成 `hermes-cn.cmd` 即可，命令名完全相同。

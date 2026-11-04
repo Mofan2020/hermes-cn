@@ -48,8 +48,21 @@ fi
 . "$CN_SELF_DIR/lib/doctor.sh"
 # shellcheck source=lib/accel.sh
 . "$CN_SELF_DIR/lib/accel.sh"
+# web.sh 是可选功能，缺了只影响 web 命令，不该让整个脚本跑不起来。
+if [ -f "$CN_SELF_DIR/lib/web.sh" ]; then
+  # shellcheck source=lib/web.sh
+  . "$CN_SELF_DIR/lib/web.sh"
+else
+  cn_web_cmd() {
+    printf 'hermes-cn：缺少配套文件，跑不起来。\n' >&2
+    printf '  缺少： lib/web.sh\n' >&2
+    printf '  请把整个目录一起下载。\n' >&2
+    printf '  下载地址：https://github.com/Mofan2020/hermes-cn/releases/latest\n' >&2
+    return 1
+  }
+fi
 
-CN_VERSION="1.2.0"
+CN_VERSION="1.3.0"
 
 cn_usage() {
   cat <<'EOF'
@@ -67,6 +80,7 @@ hermes-cn —— Hermes 大陆网络加速
   restore           撤销 apply 的所有改动，还原依赖清单和 Git 配置
   install           用镜像全新安装 Hermes 到 ~/.hermes/hermes-agent
   accel <子命令>    GitHub 加速环境：setup / probe / status / env / download / test / uninstall
+  web <子命令>      浏览器加速：start / serve / stop / status / test（仅 macOS / Linux）
   help              显示本帮助
 
 选项：
@@ -415,6 +429,7 @@ case "$CN_CMD" in
   restore) cmd_restore ;;
   install) cmd_install "$@" ;;
   accel)  cn_accel_cmd "$@" ;;
+  web)    cn_web_cmd "$@" ;;
   *)
     cn_err "未知命令：${CN_CMD}"
     cn_usage >&2
