@@ -42,11 +42,13 @@ CN_ACCEL_ENV_FILE="$CN_ACCEL_DIR/env.sh"
 #           节点是现拉的，用大仓库探测要等很久，小仓库几秒就出结果。
 #
 # 2026-11-03 实测：
-#   gh-proxy.com   下载可用、git 可用
-#   gh-proxy.cc    下载可用、git 可用
-#   ghproxy.icu    下载可用、git 可用
-#   ghproxy.net    下载可用、git 时好时坏
-#   gitclone.com   git 可用（整站镜像，下载域名不支持）
+#   下载可用 + git 可用（完全可用）：
+#     gh-proxy.com、gh-proxy.cc、gh-proxy.org、ghproxy.icu、ghproxy.vip、
+#     ghproxy.xyz、www.gh-proxy.cc
+#   下载可用、git 时好时坏：
+#     ghproxy.net
+#   git 可用（整站镜像，下载域名不支持）：
+#     gitclone.com
 #   其余候选当天不通，但过段时间可能恢复，所以仍然留着，探测时自动跳过。
 #
 # 想加自己的节点，写进 ~/.hermes-cn/accel/nodes.txt，
@@ -54,7 +56,10 @@ CN_ACCEL_ENV_FILE="$CN_ACCEL_DIR/env.sh"
 CN_ACCEL_NODES="
 gh-proxy.com|https://gh-proxy.com/https://github.com/|https://gh-proxy.com/https://|https://gh-proxy.com/https://github.com/octocat/Hello-World.git
 gh-proxy.cc|https://gh-proxy.cc/https://github.com/|https://gh-proxy.cc/https://|https://gh-proxy.cc/https://github.com/octocat/Hello-World.git
+gh-proxy.org|https://gh-proxy.org/https://github.com/|https://gh-proxy.org/https://|https://gh-proxy.org/https://github.com/octocat/Hello-World.git
 ghproxy.icu|https://ghproxy.icu/https://github.com/|https://ghproxy.icu/https://|https://ghproxy.icu/https://github.com/octocat/Hello-World.git
+ghproxy.vip|https://ghproxy.vip/https://github.com/|https://ghproxy.vip/https://|https://ghproxy.vip/https://github.com/octocat/Hello-World.git
+ghproxy.xyz|https://ghproxy.xyz/https://github.com/|https://ghproxy.xyz/https://|https://ghproxy.xyz/https://github.com/octocat/Hello-World.git
 ghproxy.net|https://ghproxy.net/https://github.com/|https://ghproxy.net/https://|https://ghproxy.net/https://github.com/octocat/Hello-World.git
 www.gh-proxy.cc|https://www.gh-proxy.cc/https://github.com/|https://www.gh-proxy.cc/https://|https://www.gh-proxy.cc/https://github.com/octocat/Hello-World.git
 gh-proxy.net|https://gh-proxy.net/https://github.com/|https://gh-proxy.net/https://|https://gh-proxy.net/https://github.com/octocat/Hello-World.git
@@ -148,15 +153,23 @@ cn_accel_probe_node() {
   find "$_tmp" -mindepth 1 -delete 2>/dev/null; rmdir "$_tmp" 2>/dev/null
 
   # 2) 下载是不是真的
-  if ! cn_accel_probe_download "$_dl_prefix"; then
-    CN_ACCEL_PROBE_NOTE="下载不通"
-    return 1
+  # 整站镜像节点没有下载前缀，这种节点只走 git，下载测了也没意义。
+  if [ -n "$_dl_prefix" ]; then
+    if ! cn_accel_probe_download "$_dl_prefix"; then
+      CN_ACCEL_PROBE_NOTE="下载不通"
+      return 1
+    fi
   fi
 
   # 3) git 协议
   if cn_accel_probe_git "$_probe_url"; then
     CN_ACCEL_PROBE_NOTE="完全可用"
     return 0
+  fi
+
+  if [ -z "$_dl_prefix" ]; then
+    CN_ACCEL_PROBE_NOTE="git 协议不通"
+    return 1
   fi
 
   CN_ACCEL_PROBE_NOTE="只能下载，git 协议不通"
@@ -321,11 +334,22 @@ cn_accel_download() {
     [ -n "$out" ] || out="download.bin"
   fi
   cn_log "下载地址：${target}"
-  if curl -sSL --connect-timeout 10 --max-time 1800 -o "$out" "$target"; then
+  # -f 让 HTTP 错误状态直接返回失败；不加的话 404 会留下一个空文件，
+  # 被误报成「下载成功」。
+  local code=""
+  code=$(curl -sSLf --connect-timeout 10 --max-time 1800 -o "$out" -w '%{http_code}' "$target" 2>/dev/null) || code=""
+  if [ "$code" = "200" ] && [ -s "$out" ]; then
     cn_ok "已下载：${out}（$(wc -c < "$out" | tr -d ' ') 字节）"
     return 0
   fi
-  cn_err "下载失败"
+  if [ -n "$code" ] && [ "$code" != "200" ]; then
+    cn_err "下载失败（节点返回 $code）"
+  else
+    cn_err "下载失败"
+  fi
+  if [ ! -s "$out" ]; then
+    cn_warn "这个节点可能不支持这类地址，换一个节点再试： hermes-cn.sh accel setup"
+  fi
   return 1
 }
 
