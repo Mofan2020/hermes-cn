@@ -447,13 +447,27 @@ cn_web_selftest() {
   sleep 1.5
   if kill -0 "$pid" 2>/dev/null; then
     cn_ok "服务能启动"
-    # 用一个必定走不到的文件测连通，避免依赖外网
+    # 取一个仓库页面回来。页面不小，节点慢的时候要多给点时间，
+    # 超时和「服务没起来」是两回事，要分开报。
     local got
-    got=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' \
+    got=$(curl -sS --max-time 60 -o /dev/null -w '%{http_code}' \
       "http://127.0.0.1:$port/gh/github.com/octocat/Hello-World" 2>/dev/null)
     case "$got" in
       200) cn_ok "转发链路通，页面能取回来" ;;
-      000) cn_err "服务收不到请求" ; fail=1 ;;
+      000)
+        # 再试一次，区分是服务没监听还是节点慢
+        sleep 1
+        got=$(curl -sS --max-time 60 -o /dev/null -w '%{http_code}' \
+          "http://127.0.0.1:$port/gh/github.com/octocat/Hello-World" 2>/dev/null)
+        if [ "$got" = "200" ]; then
+          cn_ok "转发链路通，页面能取回来"
+        elif [ "$got" = "000" ]; then
+          cn_err "服务收不到请求"
+          fail=1
+        else
+          cn_warn "节点返回 $got，页面可能取不回来"
+        fi
+        ;;
       *)   cn_warn "节点返回 $got，页面可能取不回来" ;;
     esac
   else

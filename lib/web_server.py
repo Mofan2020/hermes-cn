@@ -139,6 +139,14 @@ ASSET_DOMAINS = (
     "user-images.githubusercontent.com",
 )
 
+# 页面里出现、并且要跟着一起加速的域名。
+# api.github.com 也要管：页面里的脚本会调它，
+# 漏了就变成直连，等于那部分请求没走加速。
+GITHUB_DOMAINS = (
+    "github.com",
+    "api.github.com",
+) + ASSET_DOMAINS
+
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
     # 由主进程注入：网页节点、样式文件节点、端口
@@ -182,6 +190,9 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         if host in ("github.com", "www.github.com"):
             ordered = list(self.web_nodes)
         else:
+            # 接口、样式、图片这些都走资源节点。
+            # 实测网页节点不支持 api.github.com（返回 403 或 404），
+            # 资源节点才代理得了。
             ordered = list(self.asset_nodes)
         seen = set()
         out = []
@@ -219,13 +230,12 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         except Exception:
             return body
         base = "http://127.0.0.1:%d/gh" % self.port
-        text = text.replace("https://github.com/", base + "/github.com/")
-        for domain in ASSET_DOMAINS:
-            text = text.replace("https://" + domain, base + "/" + domain)
-        # 协议相对地址（//github.com/...）同样要改
-        text = text.replace("//github.com/", base + "/github.com/")
-        for domain in ASSET_DOMAINS:
-            text = text.replace("//" + domain, base + "/" + domain)
+        for domain in GITHUB_DOMAINS:
+            text = text.replace("https://" + domain + "/", base + "/" + domain + "/")
+            text = text.replace("https://" + domain + "\"", base + "/" + domain + "\"")
+            # 协议相对地址（//github.com/...）同样要改
+            text = text.replace("//" + domain + "/", base + "/" + domain + "/")
+            text = text.replace("//" + domain + "\"", base + "/" + domain + "\"")
         return text.encode("utf-8")
 
     def _fetch(self, target, timeout=30):
@@ -277,11 +287,15 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             raw_path, query = raw_path.split("?", 1)
 
         if raw_path.startswith("/gh/"):
+            # 完整写法：/gh/github.com/owner/repo
             rest = raw_path[4:]
         else:
-            rest = raw_path.lstrip("/")
+            # 相对链接写法：/owner/repo/issues
+            # GitHub 的页面里大量用这种根路径相对链接，
+            # 浏览器会按当前域名解析。不接管的话点一下就 404。
+            rest = "github.com" + raw_path
 
-        if not rest:
+        if not rest or rest == "github.com":
             rest = "github.com/"
 
         host = rest.split("/", 1)[0]

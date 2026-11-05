@@ -62,7 +62,7 @@ else
   }
 fi
 
-CN_VERSION="1.3.0"
+CN_VERSION="1.3.1"
 
 cn_usage() {
   cat <<'EOF'
